@@ -1,0 +1,45 @@
+PTY SOC:
+A simple paradigm for attaching shells to a context.
+
+SUMMARY:
+    From the context you want to access use "pty @" command to create a control 
+    node (FIFO) for your prefered shell. Recommended path is /run/<context>.pty
+    ex) pty @ /run/init.pty /bin/bash
+
+    The command does not exit. It will keep listening on the control node.
+    You will have to daemonize the command yourself.
+
+    Then from the restricted context (such as a PID namespace), use soc to connect
+    to the pty process. You can use Ctrl-d to exit.
+    ex) soc /run/init.pty
+    
+    It is possible to connect multible shells to pty @ at the same time.
+
+    Programs that want to implment a soc in-process should implement functionality
+    mirroring the pty @ command. Shell scripts can use the "pty @" command directly.
+
+USAGE:
+
+soc <file>
+    1. opens a pty 
+    2. write slave path to <file>
+    3. waits for something else to open the slave pty
+    4. pipes calling context's tty to the master port of the pty
+    5. actively mediates pipe untill slave pty is closed or signal recieved
+
+pty </dev/pts/N> <command>
+    1. opens the specified pts
+    2. forks off process to run command under the pty
+    2. waits for child process to finish
+
+pty @ <path> <command>
+    1. creates fifo at <path>, deleting any existing fifo
+    2. reads lines from fifo, for each line:
+        a. interpret line as path to pty slave
+        b. open the pty slave
+        c. fork process to run command under the pty
+    3. reads untill SIGINT, reaps dead children (SIGCHLD)
+
+CREDITS:
+author: Erich Spaker [November 2020]
+derived from: https://github.com/abligh/pty
